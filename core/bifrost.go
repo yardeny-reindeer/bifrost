@@ -8103,7 +8103,8 @@ func disableAnthropicPassthrough(ctx *schemas.BifrostContext) {
 // the request like any other. Gemini keeps it. Vertex keeps it for the models it serves with a
 // Google body (Gemini, Gemma, Imagen, Veo and numeric tuned endpoints), for batch jobs, whose body
 // is the job definition and which Vertex runs for Claude and Llama too, and for file and
-// cached-content requests, which name no model or a Gemini one; a Claude, Mistral or other Model
+// cached-content requests, which name no model or a Gemini one, and for Interactions agents, which
+// Vertex runs on /interactions with the caller's body; a Claude, Mistral or other Model
 // Garden model on Vertex is sent an Anthropic or OpenAI body, so it is converted. Call
 // this only after key-level alias resolution: the family predicates read the resolved alias.
 // Re-runs per attempt, so a fallback after a Gemini primary is caught. No-op outside the GenAI
@@ -8122,6 +8123,7 @@ func clearGenAIPassthroughForNonGoogleProvider(ctx *schemas.BifrostContext, base
 	}
 	if baseProvider == schemas.Vertex &&
 		(isBatchRequestType(requestType) || isFileRequestType(requestType) || isCachedContentRequestType(requestType) ||
+			gemini.IsGeminiInteractionsAgent(model) ||
 			schemas.IsGeminiModelFamily(ctx, model) || schemas.IsGemmaModelFamily(ctx, model) ||
 			schemas.IsImagenModelFamily(ctx, model) || schemas.IsVeoModelFamily(ctx, model) ||
 			schemas.IsAllDigitsASCII(model)) {

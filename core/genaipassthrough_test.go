@@ -13,7 +13,8 @@ import (
 // TestClearGenAIPassthroughForNonGoogleProvider pins which attempts of a GenAI-integration request
 // keep the caller's Gemini body. Gemini does. Vertex does for the models it serves with a Google body
 // (Gemini, Gemma, Imagen, Veo and numeric tuned endpoints), for batch jobs, which Vertex runs for
-// Claude and Llama too, and for file and cached-content requests, which name no model or a Gemini one;
+// Claude and Llama too, for file and cached-content requests, which name no model or a Gemini one, and
+// for Interactions agents, which Vertex runs on /interactions with the caller's body;
 // a Claude, Mistral or other Model Garden model gets it converted, as does any other provider.
 // Requests from other integrations are left alone.
 func TestClearGenAIPassthroughForNonGoogleProvider(t *testing.T) {
@@ -43,6 +44,7 @@ func TestClearGenAIPassthroughForNonGoogleProvider(t *testing.T) {
 		{"genai cached content create on vertex keeps the raw body", "genai", schemas.Vertex, schemas.CachedContentCreateRequest, "gemini-2.5-flash", nil, false},
 		{"genai cached content update naming no model on vertex keeps the raw body", "genai", schemas.Vertex, schemas.CachedContentUpdateRequest, "", nil, false},
 		{"genai file upload on vertex keeps the raw body", "genai", schemas.Vertex, schemas.FileUploadRequest, "", nil, false},
+		{"genai interactions agent on vertex keeps the raw body", "genai", schemas.Vertex, schemas.ResponsesRequest, "deep-research-preview-04-2026", nil, false},
 		{"genai to openai converts", "genai", schemas.OpenAI, schemas.ChatCompletionRequest, "gpt-4o-mini", nil, true},
 		{"genai to anthropic converts", "genai", schemas.Anthropic, schemas.ChatCompletionRequest, "claude-sonnet-4-5", nil, true},
 		{"genai to bedrock converts", "genai", schemas.Bedrock, schemas.ChatCompletionRequest, "claude-sonnet-4-5", nil, true},
