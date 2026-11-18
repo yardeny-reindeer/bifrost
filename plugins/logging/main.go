@@ -2776,7 +2776,9 @@ func (p *LoggerPlugin) PostLLMHook(ctx *schemas.BifrostContext, result *schemas.
 			p.accountVideoResults(entry, result, pricingScopes)
 		}
 	}
-	if bifrostErr == nil && result != nil && result.PassthroughResponse != nil && result.PassthroughResponse.ProviderJob != nil {
+	if bifrostErr == nil && result != nil &&
+		(result.PassthroughResponse != nil && result.PassthroughResponse.ProviderJob != nil ||
+			result.ResponsesResponse != nil && result.ResponsesResponse.ProviderJob != nil) {
 		p.handleInteractionJob(ctx, entry, result)
 	}
 
