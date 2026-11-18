@@ -287,6 +287,9 @@ type geminiInteractionsUsage struct {
 	OutputTokens  int `json:"total_output_tokens"`
 	ThoughtTokens int `json:"total_thought_tokens"`
 	CachedTokens  int `json:"total_cached_tokens"`
+	ToolUseTokens int `json:"total_tool_use_tokens"`
+
+	GroundingToolCount []GeminiInteractionsGroundingToolCount `json:"grounding_tool_count"`
 }
 
 type geminiInteractionsRun struct {
@@ -357,7 +360,7 @@ func ParseInteractionsPassthrough(body []byte) InteractionsPassthroughInfo {
 	if w.Interaction != nil && w.Interaction.Usage != nil && w.Interaction.Usage.TotalTokens > 0 {
 		u, tier = w.Interaction.Usage, w.Interaction.ServiceTier
 	}
-	info.Usage = interactionsUsage(u, tier)
+	info.Usage = interactionsUsage(u, tier, info.Model)
 	return info
 }
 
@@ -365,13 +368,16 @@ func extractGeminiInteractionsUsage(body []byte) *schemas.BifrostPassthroughUsag
 	return ParseInteractionsPassthrough(body).Usage
 }
 
-func interactionsUsage(u *geminiInteractionsUsage, tier *string) *schemas.BifrostPassthroughUsage {
+// interactionsUsage maps a run's usage for billing. Tool use prompt tokens are input (Google
+// bills them at the input rate and counts them in total_tokens), and Google Search runs are the
+// per-query search fee; model decides the search unit (see geminiInteractionsSearchUnits).
+func interactionsUsage(u *geminiInteractionsUsage, tier *string, model string) *schemas.BifrostPassthroughUsage {
 	if u == nil || u.TotalTokens == 0 {
 		return nil
 	}
 
 	usage := &schemas.BifrostLLMUsage{
-		PromptTokens:     u.InputTokens,
+		PromptTokens:     u.InputTokens + u.ToolUseTokens,
 		CompletionTokens: u.OutputTokens + u.ThoughtTokens,
 		TotalTokens:      u.TotalTokens,
 	}
@@ -384,6 +390,13 @@ func interactionsUsage(u *geminiInteractionsUsage, tier *string) *schemas.Bifros
 		usage.CompletionTokensDetails = &schemas.ChatCompletionTokensDetails{
 			ReasoningTokens: u.ThoughtTokens,
 		}
+	}
+	if n := geminiInteractionsSearchUnits(u.GroundingToolCount, model); n > 0 {
+		if usage.CompletionTokensDetails == nil {
+			usage.CompletionTokensDetails = &schemas.ChatCompletionTokensDetails{}
+		}
+		usage.CompletionTokensDetails.NumSearchQueries = schemas.Ptr(n)
+		usage.ToolUsage = &schemas.ToolUsage{WebSearch: &schemas.WebSearchToolUsage{NumRequests: n}}
 	}
 
 	result := &schemas.BifrostPassthroughUsage{LLMUsage: usage}
